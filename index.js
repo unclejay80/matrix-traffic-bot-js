@@ -33,6 +33,11 @@ client.on("room.message", (roomId, event) => {
     });
   }
 
+  if (body.startsWith("!calc")) {
+    const expression = body.substring("!calc".length).trim();
+    doMath(roomId, event, expression);
+  }
+
   if (body.startsWith("!poll")) {
     var cmdElements = body.split(" ");
     const arguments = cmdElements.length;
@@ -51,6 +56,10 @@ client.on("room.message", (roomId, event) => {
         intervalMap.set(roomId, intervalHandle);
       }
     }
+  }
+
+  if (body.startsWith("!cam")) {
+    sendWebcamImage(roomId, "https://livespotting.com/snapshots/LS_10vJe.jpg");
   }
 });
 
@@ -95,4 +104,37 @@ function sendRandomQuestion(roomId) {
       });
     }
   );
+}
+
+function doMath(roomId, event, expression) {
+  const url = "http://api.mathjs.org/v4/?expr=" + encodeURI(expression);
+  request(url, (err, res, body) => {
+    if (err) {
+      return console.log(err);
+    }
+    client.replyText(roomId, event, body);
+  });
+}
+
+function sendWebcamImage(roomId, url) {
+  try {
+    request(url, { encoding: null }, (err, res, body) => {
+      if (err) {
+        return console.log(err);
+      }
+      client.uploadContent(body, "image/jpeg", "test.jpg").then(mxcUri => {
+        client
+          .sendMessage(roomId, {
+            msgtype: "m.image",
+            body: "",
+            url: mxcUri
+          })
+          .catch(err => {
+            console.log("caught", err.message);
+          });
+      });
+    });
+  } catch (error) {
+    console.log(error);
+  }
 }
