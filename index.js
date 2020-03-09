@@ -3,65 +3,91 @@ const sdk = require("matrix-bot-sdk");
 const he = require("he");
 
 const MatrixClient = sdk.MatrixClient;
+const PantalaimonClient = sdk.PantalaimonClient;
 const SimpleFsStorageProvider = sdk.SimpleFsStorageProvider;
 const AutojoinRoomsMixin = sdk.AutojoinRoomsMixin;
 
-const homeserverUrl = "https://matrix.org"; // make sure to update this with your url
+const homeserverUrl = process.env.SERVER_URL;
 const accessToken = process.env.TOKEN;
 
 let intervalMap = new Map();
 
 const storage = new SimpleFsStorageProvider("bot.json");
 
-const client = new MatrixClient(homeserverUrl, accessToken, storage);
+var client = null;
 
-AutojoinRoomsMixin.setupOnClient(client);
+if (process.env.PANTALAIMON) {
+  const pClient = new PantalaimonClient(homeserverUrl, storage);
 
-client.start().then(() => console.log("Client started!"));
+  pClient
+    .createClientWithCredentials(process.env.USERNAME, process.env.PASSWORD)
+    .then(matrixClient => {
+      client = matrixClient;
 
-client.on("room.message", (roomId, event) => {
-  if (!event["content"]) return;
-  const sender = event["sender"];
-  const body = event["content"]["body"];
-  console.log(`${roomId}: ${sender} says '${body}`);
-
-  if (body.startsWith("!echo")) {
-    const replyText = body.substring("!echo".length).trim();
-    client.sendMessage(roomId, {
-      msgtype: "m.notice",
-      body: replyText
+      client.start().then(() => {
+        console.log("Client started!");
+        afterClientInit(client);
+      });
     });
-  }
+} else {
+  client = new MatrixClient(homeserverUrl, accessToken, storage);
 
-  if (body.startsWith("!calc")) {
-    const expression = body.substring("!calc".length).trim();
-    doMath(roomId, event, expression);
-  }
+  client.start().then(() => {
+    console.log("Client started!");
+    afterClientInit(client);
+  });
+}
 
-  if (body.startsWith("!poll")) {
-    var cmdElements = body.split(" ");
-    const arguments = cmdElements.length;
-    if (arguments == 1) {
-      sendRandomQuestion(roomId);
-    } else if (arguments == 2) {
-      const interval = parseInt(cmdElements[1]) * 1000;
-      if (interval == 0) {
-        clearInterval(intervalMap.get(roomId));
-      } else {
-        const intervalHandle = setInterval(
-          pollIntervalHandler,
-          interval,
-          roomId
-        );
-        intervalMap.set(roomId, intervalHandle);
+function afterClientInit(client) {
+  AutojoinRoomsMixin.setupOnClient(client);
+
+  client.on("room.message", (roomId, event) => {
+    if (!event["content"]) return;
+    const sender = event["sender"];
+    const body = event["content"]["body"];
+    console.log(`${roomId}: ${sender} says '${body}`);
+
+    if (body.startsWith("!echo")) {
+      const replyText = body.substring("!echo".length).trim();
+      client.sendMessage(roomId, {
+        msgtype: "m.notice",
+        body: replyText
+      });
+    }
+
+    if (body.startsWith("!calc")) {
+      const expression = body.substring("!calc".length).trim();
+      doMath(roomId, event, expression);
+    }
+
+    if (body.startsWith("!poll")) {
+      var cmdElements = body.split(" ");
+      const arguments = cmdElements.length;
+      if (arguments == 1) {
+        sendRandomQuestion(roomId);
+      } else if (arguments == 2) {
+        const interval = parseInt(cmdElements[1]) * 1000;
+        if (interval == 0) {
+          clearInterval(intervalMap.get(roomId));
+        } else {
+          const intervalHandle = setInterval(
+            pollIntervalHandler,
+            interval,
+            roomId
+          );
+          intervalMap.set(roomId, intervalHandle);
+        }
       }
     }
-  }
 
-  if (body.startsWith("!cam")) {
-    sendWebcamImage(roomId, "https://livespotting.com/snapshots/LS_10vJe.jpg");
-  }
-});
+    if (body.startsWith("!cam")) {
+      sendWebcamImage(
+        roomId,
+        "https://livespotting.com/snapshots/LS_10vJe.jpg"
+      );
+    }
+  });
+}
 
 function pollIntervalHandler(roomId) {
   sendRandomQuestion(roomId);
