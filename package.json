@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "he": "^1.2.0",
     "matrix-bot-sdk": "^0.5.2",
-    "request": "^2.88.2",
-    "he": "^1.2.0"
+    "request": "^2.88.2"
   },
   "devDependencies": {},
   "scripts": {
