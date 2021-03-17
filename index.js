@@ -1,14 +1,13 @@
 const request = require("request");
 const sdk = require("matrix-bot-sdk");
 const he = require("he");
+var MasterBot = require("./master_bot.js");
 
-const MatrixClient = sdk.MatrixClient;
 const PantalaimonClient = sdk.PantalaimonClient;
 const SimpleFsStorageProvider = sdk.SimpleFsStorageProvider;
 const AutojoinRoomsMixin = sdk.AutojoinRoomsMixin;
 
 const homeserverUrl = process.env.SERVER_URL;
-const accessToken = process.env.TOKEN;
 
 let intervalMap = new Map();
 
@@ -16,28 +15,32 @@ const storage = new SimpleFsStorageProvider("bot.json");
 
 var client = null;
 
-if (process.env.PANTALAIMON) {
-  const pClient = new PantalaimonClient(homeserverUrl, storage);
+var masterBot = new MasterBot(
+  homeserverUrl,
+  process.env.HOMESERVER_HOST,
+  process.env.USERNAME,
+  process.env.PASSWORD,
+  process.env.SLAVE_BASE_USERNAME,
+  process.env.SLAVE_BASE_PASSWORD,
+  process.env.SLAVE_CNT
+);
 
-  pClient
-    .createClientWithCredentials(process.env.USERNAME, process.env.PASSWORD)
-    .then(matrixClient => {
-      client = matrixClient;
+masterBot.connect();
 
-      client.start().then(() => {
-        console.log("Client started!");
-        afterClientInit(client);
-      });
+/*
+const pClient = new PantalaimonClient(homeserverUrl, storage);
+
+pClient
+  .createClientWithCredentials(process.env.USERNAME, process.env.PASSWORD)
+  .then((matrixClient) => {
+    client = matrixClient;
+
+    client.start().then(() => {
+      console.log("Client started!");
+      afterClientInit(client);
     });
-} else {
-  client = new MatrixClient(homeserverUrl, accessToken, storage);
-
-  client.start().then(() => {
-    console.log("Client started!");
-    afterClientInit(client);
   });
-}
-
+*/
 function afterClientInit(client) {
   AutojoinRoomsMixin.setupOnClient(client);
 
@@ -51,7 +54,7 @@ function afterClientInit(client) {
       const replyText = body.substring("!echo".length).trim();
       client.sendMessage(roomId, {
         msgtype: "m.notice",
-        body: replyText
+        body: replyText,
       });
     }
 
@@ -108,16 +111,16 @@ function sendRandomQuestion(roomId) {
       var optionsStr = "";
       options.push({
         label: he.decode(result.correct_answer),
-        value: he.decode(result.correct_answer)
+        value: he.decode(result.correct_answer),
       });
 
       optionsStr += "\n" + result.correct_answer;
 
-      result.incorrect_answers.forEach(element => {
+      result.incorrect_answers.forEach((element) => {
         optionsStr += "\n" + element;
         options.push({
           label: he.decode(element),
-          value: he.decode(element)
+          value: he.decode(element),
         });
       });
 
@@ -126,7 +129,7 @@ function sendRandomQuestion(roomId) {
         type: "org.matrix.poll",
         msgtype: "org.matrix.options",
         options: options,
-        body: "[Poll] " + question + optionsStr
+        body: "[Poll] " + question + optionsStr,
       });
     }
   );
@@ -148,14 +151,14 @@ function sendWebcamImage(roomId, url) {
       if (err) {
         return console.log(err);
       }
-      client.uploadContent(body, "image/jpeg", "test.jpg").then(mxcUri => {
+      client.uploadContent(body, "image/jpeg", "test.jpg").then((mxcUri) => {
         client
           .sendMessage(roomId, {
             msgtype: "m.image",
             body: "",
-            url: mxcUri
+            url: mxcUri,
           })
-          .catch(err => {
+          .catch((err) => {
             console.log("caught", err.message);
           });
       });

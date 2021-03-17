@@ -1,5 +1,6 @@
 node_modules
 npm-debug.log
-bot.json
+bot*.json
 credentials.txt
 .vscode/launch.json
+
