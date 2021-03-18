@@ -25,7 +25,7 @@ var masterBot = new MasterBot(
   process.env.SLAVE_CNT
 );
 
-masterBot.connect();
+masterBot.start();
 
 /*
 const pClient = new PantalaimonClient(homeserverUrl, storage);

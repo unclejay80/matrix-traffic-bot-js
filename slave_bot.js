@@ -1,58 +1,55 @@
 const sdk = require("matrix-bot-sdk");
+var BaseBot = require("./base_bot");
 
-const PantalaimonClient = sdk.PantalaimonClient;
-const SimpleFsStorageProvider = sdk.SimpleFsStorageProvider;
-const AutojoinRoomsMixin = sdk.AutojoinRoomsMixin;
-
-module.exports = class SlaveBot {
+module.exports = class SlaveBot extends (
+  BaseBot
+) {
   constructor(serverUrl, username, password) {
-    this.serverUrl = serverUrl;
-    this.username = username;
-    this.password = password;
-    this.storage = new SimpleFsStorageProvider("bot_" + username + ".json");
+    super(serverUrl, username, password);
+    this.intervalMap = new Map();
   }
 
-  connect() {
-    return new Promise((resolve, reject) => {
-      this.pClient = new PantalaimonClient(this.serverUrl, this.storage);
+  onRoomEvent(client, event, sender, roomId, body) {
+    if (body.startsWith("!slave")) {
+      var cmdElements = body.split(" ");
+      var cmdCnt = cmdElements.length;
 
-      this.pClient
-        .createClientWithCredentials(this.username, this.password)
-        .then((matrixClient) => {
-          this.client = matrixClient;
+      if (cmdCnt >= 2) {
+        var cmd = cmdElements[1].trim();
 
-          this.client
-            .start()
-            .then(() => {
-              console.log("Client started!");
-              this.afterClientInit(this.client);
-              resolve();
-            })
-            .catch((err) => {
-              reject(err);
-            });
-        });
-    });
+        this.handleSlaveCommand(client, roomId, cmd, cmdElements[2]);
+      }
+    }
   }
 
-  afterClientInit(client) {
-    AutojoinRoomsMixin.setupOnClient(client);
+  handleSlaveCommand(client, roomId, cmd, parameter) {
+    if (cmd == "echo" && parameter != undefined) {
+      client.sendMessage(roomId, {
+        msgtype: "m.notice",
+        body: parameter,
+      });
+    }
 
-    client.on("room.message", (roomId, event) => {
-      if (!event["content"]) {
-        return;
+    if (cmd == "text" && parameter != undefined) {
+      const interval = parseInt(parameter) * 1000;
+      if (interval == 0) {
+        clearInterval(this.intervalMap.get(roomId));
+      } else {
+        const intervalHandle = setInterval(
+          this.textIntervalHandler,
+          interval,
+          roomId,
+          client
+        );
+        this.intervalMap.set(roomId, intervalHandle);
       }
-      const sender = event["sender"];
-      const body = event["content"]["body"];
-      console.log(`${roomId}: ${sender} says '${body}`);
+    }
+  }
 
-      if (body.startsWith("!echo")) {
-        const replyText = body.substring("!echo".length).trim();
-        client.sendMessage(roomId, {
-          msgtype: "m.notice",
-          body: replyText,
-        });
-      }
+  textIntervalHandler(roomId, client) {
+    client.sendMessage(roomId, {
+      msgtype: "m.notice",
+      body: "parameter",
     });
   }
 };

@@ -29,6 +29,11 @@ module.exports = class MasterBot {
     this.slaveList = [];
   }
 
+  start() {
+    this.connect();
+    this.runSlaves();
+  }
+
   connect() {
     this.pClient = new PantalaimonClient(this.serverUrl, this.storage);
 
