@@ -11,8 +11,6 @@ const homeserverUrl = process.env.SERVER_URL;
 
 let intervalMap = new Map();
 
-const storage = new SimpleFsStorageProvider("bot.json");
-
 var client = null;
 
 var masterBot = new MasterBot(

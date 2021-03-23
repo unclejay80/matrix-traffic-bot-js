@@ -1,6 +1,9 @@
 const request = require("request");
 const sdk = require("matrix-bot-sdk");
 const he = require("he");
+const fs = require("fs");
+
+const LAST_SLAVE_ID = "LAST_SLAVE_ID";
 
 const PantalaimonClient = sdk.PantalaimonClient;
 const SimpleFsStorageProvider = sdk.SimpleFsStorageProvider;
@@ -29,12 +32,11 @@ module.exports = class MasterBot {
     this.slaveBasePassword = slaveBasePassword;
     this.slaveCnt = slaveCnt;
     this.slaveList = new Map();
-    this.slaveListOld = [];
   }
 
   start() {
     this.connect();
-    this.runSlaves();
+    //this.runSlaves();
   }
 
   connect() {
@@ -94,11 +96,7 @@ module.exports = class MasterBot {
         if (cmd == "createslaves") {
           var slavesCreateCnt = parseInt(cmdElements[2]);
 
-          var slaveIds = this.slaveList.keys();
-          var lastId = -1;
-          if (slaveIds.length > 0) {
-            lastId = slaveIds[slaveIds.length - 1];
-          }
+          var lastId = this.getLastSlaveId();
 
           for (var i = 1; i <= slavesCreateCnt; i++) {
             var nextId = lastId + i;
@@ -111,17 +109,23 @@ module.exports = class MasterBot {
               })
               .then((err, data) => {
                 console.log("slave " + slaveId + " created");
-                //this.runSingleSlave(nextId);
+                this.runSingleSlave(nextId);
               });
+
+            this.incLastSlaveId();
           }
         }
 
         if (cmd == "joinslaves") {
-          this.slaveList.forEach((slave, id, map) => {
-            var slaveId =
-              "@" + this.slaveBaseUserame + key + ":" + this.homeServerHost;
+          client.getJoinedRoomMembers(roomId).then((members) => {
+            this.slaveList.forEach((slave, id, map) => {
+              var slaveId =
+                "@" + this.slaveBaseUserame + id + ":" + this.homeServerHost;
 
-            client.inviteUser(slaveId, roomId).then((err, data) => {});
+              if (!members.includes(slaveId)) {
+                client.inviteUser(slaveId, roomId).then((err, data) => {});
+              }
+            });
           });
         }
 
@@ -168,24 +172,40 @@ module.exports = class MasterBot {
     }
   }
 
+  getLastSlaveId() {
+    var lastId = -1;
+    try {
+      lastId = parseInt(this.storage.readValue(LAST_SLAVE_ID));
+    } catch {}
+    if (isNaN(lastId)) {
+      lastId = -1;
+    }
+    return lastId;
+  }
+
+  incLastSlaveId() {
+    var lastId = this.getLastSlaveId() + 1;
+    this.storage.storeValue(LAST_SLAVE_ID, lastId);
+  }
+
   runSingleSlave(id) {
-    /*
     if (this.slaveList.has(id)) {
       return;
     }
-*/
+
     var slave = new SlaveBot(
       this.serverUrl,
       this.slaveBaseUserame + id,
       this.slaveBasePassword
     );
-    //this.slaveList.set(id, slave);
-    this.slaveListOld.push(slave);
+    this.slaveList.set(id, slave);
+
     slave.connect();
   }
 
   runSlaves() {
-    for (var i = 0; i < this.slaveCnt; i++) {
+    var slaveCnt = this.getLastSlaveId();
+    for (var i = 0; i <= slaveCnt; i++) {
       this.runSingleSlave(i);
     }
   }
