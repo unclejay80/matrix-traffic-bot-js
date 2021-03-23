@@ -20,8 +20,7 @@ module.exports = class MasterBot {
     username,
     password,
     slaveBaseUserame,
-    slaveBasePassword,
-    slaveCnt
+    slaveBasePassword
   ) {
     this.serverUrl = serverUrl;
     this.homeServerHost = homeServerHost;
@@ -30,7 +29,6 @@ module.exports = class MasterBot {
     this.storage = new SimpleFsStorageProvider("bot_" + username + ".json");
     this.slaveBaseUserame = slaveBaseUserame;
     this.slaveBasePassword = slaveBasePassword;
-    this.slaveCnt = slaveCnt;
     this.slaveList = new Map();
   }
 
@@ -137,23 +135,28 @@ module.exports = class MasterBot {
         }
 
         if (cmd == "kickslaves") {
-          for (var i = 0; i < this.slaveCnt; i++) {
-            var slaveId =
-              "@" + this.slaveBaseUserame + i + ":" + this.homeServerHost;
+          client.getJoinedRoomMembers(roomId).then((members) => {
+            this.slaveList.forEach((slave, id, map) => {
+              var slaveId =
+                "@" + this.slaveBaseUserame + id + ":" + this.homeServerHost;
 
-            client.kickUser(slaveId, roomId, "").then((err, data) => {});
-          }
+              if (!members.startsWith(this.slaveBaseUserame)) {
+                client.kickUser(slaveId, roomId, "").then((err, data) => {});
+              }
+            });
+          });
         }
 
         if (cmd == "start") {
           var roomName = cmdElements[2].trim();
 
           var slaveIds = [];
-          for (var i = 0; i < this.slaveCnt; i++) {
-            slaveIds.push(
-              "@" + this.slaveBaseUserame + i + ":" + this.homeServerHost
-            );
-          }
+
+          this.slaveList.forEach((slave, id, map) => {
+            var slaveId =
+              "@" + this.slaveBaseUserame + id + ":" + this.homeServerHost;
+            slaveIds.push(slaveId);
+          });
 
           client
             .createRoom({

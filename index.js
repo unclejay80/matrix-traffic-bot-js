@@ -19,8 +19,7 @@ var masterBot = new MasterBot(
   process.env.USERNAME,
   process.env.PASSWORD,
   process.env.SLAVE_BASE_USERNAME,
-  process.env.SLAVE_BASE_PASSWORD,
-  parseInt(process.env.SLAVE_CNT)
+  process.env.SLAVE_BASE_PASSWORD
 );
 
 masterBot.start();
