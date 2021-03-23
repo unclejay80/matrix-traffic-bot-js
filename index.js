@@ -22,7 +22,7 @@ var masterBot = new MasterBot(
   process.env.PASSWORD,
   process.env.SLAVE_BASE_USERNAME,
   process.env.SLAVE_BASE_PASSWORD,
-  process.env.SLAVE_CNT
+  parseInt(process.env.SLAVE_CNT)
 );
 
 masterBot.start();

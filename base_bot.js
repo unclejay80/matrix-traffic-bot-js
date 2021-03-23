@@ -27,7 +27,7 @@ module.exports = class BaseBot {
           this.client
             .start()
             .then(() => {
-              console.log("Client started!");
+              console.log("Client " + this.username + " started!");
               this.afterClientInit(this.client);
               resolve();
             })
@@ -51,6 +51,11 @@ module.exports = class BaseBot {
 
       this.onRoomEvent(client, event, sender, roomId, body);
     });
+  }
+
+  stop() {
+    this.client.stop();
+    console.log("Client " + this.username + " stoppped!");
   }
 
   onRoomEvent(client, event, sender, roomId, body) {}
